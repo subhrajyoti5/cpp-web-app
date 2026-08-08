@@ -1,0 +1,264 @@
+# PRD: cpp-web-app
+
+**A monolithic full-stack web application, written entirely in C++, for educational purposes.**
+
+---
+
+## 1. Overview
+
+### 1.1 Summary
+`cpp-web-app` is a single-executable web application in which every layer of the stack — HTTP server, router, business logic, database engine, and HTML rendering — is implemented directly in C++17 using Linux sockets and the standard library. No external web frameworks, no SQL engine, no JS frontend.
+
+### 1.2 Problem / Motivation
+Most engineers interact with web stacks through frameworks (Express, Django, Spring) that hide how HTTP servers, routers, and databases actually work under the hood. This project exists to strip that abstraction away and demonstrate — by building it — how a request travels from a raw TCP socket to an HTML response and back to disk.
+
+### 1.3 Goals
+- Build a working, deployable CRUD web app with zero external frameworks.
+- Demonstrate socket-level HTTP handling, custom routing, custom file-based persistence, and server-side HTML generation.
+- Keep the codebase small, readable, and well-commented — optimized for learning, not production.
+- Deploy it on a real Ubuntu VPS/EC2 instance behind Nginx.
+
+### 1.4 Non-Goals
+This is explicitly **not** attempting to be production-grade. Out of scope:
+- Authentication / authorization
+- HTTPS/TLS termination inside the C++ server
+- A real SQL parser or query language
+- Indexing, replication, caching, load balancing
+- An ORM layer
+- Advanced async networking (epoll/io_uring event loops)
+- Security hardening against malicious input
+- Horizontal scalability
+
+---
+
+## 2. Users & Use Case
+
+**Primary user:** the developer themselves, as a learning exercise.
+
+**Use case:** Run a single binary on a VPS, hit it with a browser, add/view users through a simple CRUD interface, and have every part of the request lifecycle be code the developer wrote and understands.
+
+---
+
+## 3. System Architecture
+
+### 3.1 Request Flow
+
+```
+Browser
+  |
+  | HTTP request
+  v
+Nginx :80  (reverse proxy)
+  |
+  v
+C++ Server :8080
+  |
+  v
+Parser        --> extracts method, path, headers, body
+  |
+  v
+Router        --> matches (method, path) to a controller
+  |
+  v
+Controller    --> business logic
+  |
+  v
+Database      --> file-backed storage engine
+  |
+  v
+Renderer      --> generates HTML
+  |
+  v
+HTTP Response --> back through Nginx to Browser
+```
+
+### 3.2 Project Structure
+
+```
+cpp-web-app/
+│
+├── src/
+│   ├── main.cpp          # entry point, starts server + registers routes
+│   ├── server.cpp        # socket server: bind/listen/accept, connection handling
+│   ├── router.cpp        # URL routing table + dispatch
+│   ├── controller.cpp    # business logic (handlers for each route)
+│   ├── database.cpp      # custom file-based database engine
+│   ├── parser.cpp        # raw HTTP request parsing
+│   ├── renderer.cpp      # HTML generation
+│   └── utils.cpp         # shared helpers (string split, etc.)
+│
+├── data/
+│   └── database.db       # persistent flat-file storage
+│
+├── public/
+│   └── style.css         # static stylesheet served as-is
+│
+├── Makefile
+└── README.md
+```
+
+### 3.3 Technology Constraints
+| Constraint | Decision |
+|---|---|
+| Language | C++17 or newer |
+| Web framework | None — raw sockets only |
+| Networking | POSIX/Linux socket API (`socket`, `bind`, `listen`, `accept`, `recv`, `send`) |
+| Persistence | Flat file (`data/database.db`), no external DB |
+| Build output | Single compiled executable |
+| Target platform | Ubuntu VPS / EC2 |
+| Frontend | Server-rendered HTML strings, plain CSS, no JS framework |
+
+---
+
+## 4. Functional Requirements
+
+### 4.1 HTTP Server (`server.cpp`)
+- Implement a TCP server using `socket()`, `bind()`, `listen()`, `accept()`.
+- Read raw bytes off the socket with `recv()`, write responses with `send()`.
+- Support `GET` and `POST` methods.
+- Return well-formed HTTP responses, e.g.:
+  ```
+  HTTP/1.1 200 OK
+  Content-Type: text/html
+  Content-Length: <n>
+
+  <html>...</html>
+  ```
+- **Acceptance criteria:** a `curl` or browser request to any defined route returns a valid HTTP response with correct status line and body.
+
+### 4.2 HTTP Parsing (`parser.cpp`)
+- Parse the raw request buffer into:
+  - method (`GET` / `POST`)
+  - path (e.g. `/users`)
+  - headers (key-value pairs)
+  - body (for POST requests, e.g. form-encoded `key=value&key2=value2`)
+- **Acceptance criteria:** given a raw HTTP request string, parser produces a struct with correctly separated method/path/headers/body.
+
+### 4.3 Routing (`router.cpp`)
+- Maintain a route table keyed by `(method, path)`.
+- Expose a registration API:
+  ```cpp
+  router.addRoute("GET", "/", homeController);
+  router.addRoute("GET", "/users", usersController);
+  router.addRoute("POST", "/users", createUserController);
+  ```
+- Dispatch incoming parsed requests to the matching controller function.
+- Return a 404 response (simple HTML) for unmatched routes.
+- **Acceptance criteria:** requests to registered routes invoke the correct controller; unregistered routes return 404.
+
+### 4.4 Database Engine (`database.cpp`)
+A minimal, non-SQL, file-backed key-value/table store.
+
+**Supported operations:**
+- `CREATE <table>` — create a new named table
+- `INSERT <table> field1=value1 field2=value2 ...` — insert a record
+- `SELECT <table>` — return all records in a table
+
+**Storage format** (`data/database.db`):
+```
+users:
+1,John,20
+2,Alice,21
+```
+
+**Required functions:**
+- `load()` — read `database.db` into in-memory structures on startup
+- `save()` — persist in-memory state back to `database.db`
+- `insert()` — add a record to a table (in-memory + trigger save)
+- `select()` — return all records from a table
+
+**Implementation notes:**
+- Use `std::unordered_map<std::string, std::vector<...>>` to hold tables in memory, keyed by table name.
+- Use `std::fstream` for reading/writing the flat file.
+- **Acceptance criteria:** inserted records survive a server restart (i.e. are correctly persisted to and reloaded from disk).
+
+### 4.5 Business Logic (`controller.cpp`)
+Implements a simple user management feature:
+- **Add user** — handle `POST /users`, parse form body, insert into `users` table via database engine.
+- **View users** — handle `GET /users`, fetch all records from `users` table, pass to renderer.
+- **Homepage** — handle `GET /`, return a simple landing page.
+
+**Acceptance criteria:**
+- Submitting a new user via `POST /users` results in that user appearing on the next `GET /users`.
+- Data persists across server restarts.
+
+### 4.6 Frontend Rendering (`renderer.cpp`)
+- Generate HTML directly as C++ strings — no templating engine, no JS framework.
+- Example:
+  ```cpp
+  std::string generateUsersPage(const std::vector<User>& users);
+  ```
+- Output HTML should render a basic table of users, e.g.:
+  ```html
+  <html>
+  <body>
+    <h1>Users</h1>
+    <table>
+      <tr><td>John</td><td>20</td></tr>
+    </table>
+  </body>
+  </html>
+  ```
+- Link to a static stylesheet at `public/style.css` for basic visual polish.
+- **Acceptance criteria:** every controller response is valid, renderable HTML.
+
+### 4.7 Concurrency
+- Handle multiple simultaneous client connections using either:
+  - one `std::thread` spawned per accepted connection, or
+  - a fixed-size thread pool pulling from a connection queue
+- No async/event-loop networking (no epoll, no coroutines) — keep this simple and blocking-per-thread.
+- **Acceptance criteria:** server can handle at least a handful of concurrent requests (e.g. simultaneous `curl` calls) without blocking or crashing.
+
+### 4.8 Deployment
+- Provide a `Makefile` that compiles all `src/*.cpp` files into a single executable.
+- Provide a `README.md` with:
+  - build instructions (`make`, or `g++ src/*.cpp -o server`)
+  - run instructions (`./server`)
+  - Nginx reverse proxy config snippet (proxy `:80` → `:8080`)
+- **Acceptance criteria:** following the README from a clean Ubuntu VPS results in a running, browsable server.
+
+---
+
+## 5. Non-Functional Requirements
+
+| Category | Requirement |
+|---|---|
+| Readability | Small functions, one responsibility each; comments explain *why*, especially around socket/networking concepts |
+| Simplicity | No unnecessary abstractions, no premature generalization |
+| Portability | Must compile and run on stock Ubuntu (VPS/EC2) with g++ and POSIX sockets, no extra system dependencies |
+| Performance | Not a goal beyond "handles a few concurrent users without falling over" |
+| Security | Explicitly out of scope — no auth, no input sanitization hardening, no HTTPS in-app |
+
+---
+
+## 6. Explicitly Out of Scope
+- Authentication / authorization
+- HTTPS/TLS inside the C++ server (delegated to Nginx if ever needed)
+- A real SQL parser/query language
+- Indexing, replication, caching, load balancing
+- ORM
+- Complex/advanced memory management
+- Async networking (epoll, io_uring, coroutines)
+
+---
+
+## 7. Milestones / Build Order
+
+A sensible implementation sequence, since each component depends on the previous:
+
+1. **Socket server skeleton** — bind/listen/accept a connection, echo raw bytes back. Confirms networking basics work.
+2. **HTTP parser** — turn raw bytes into method/path/headers/body.
+3. **Static HTTP response** — server always returns a hardcoded HTML page. Confirms end-to-end request/response cycle.
+4. **Router** — introduce route table and dispatch to stub controllers.
+5. **Database engine** — implement `CREATE`/`INSERT`/`SELECT` with file persistence, tested independently of the server (e.g. via a small CLI test harness or unit test).
+6. **Controllers wired to database** — `GET /`, `GET /users`, `POST /users` fully functional.
+7. **Renderer** — replace hardcoded HTML with dynamic generation from data.
+8. **Concurrency** — add thread-per-connection or thread pool.
+9. **Deployment** — Makefile, README, Nginx config, deploy to VPS.
+
+---
+
+## 8. Open Questions
+- Form encoding for `POST /users`: standard `application/x-www-form-urlencoded`, or a simplified custom format? (Recommend: standard urlencoded, since parsing it is itself a small useful exercise.)
+- Should `database.db` support multiple tables from the start, or just `users` initially and generalize later? (Recommend: design the file format for multiple tables from day one — it costs little and avoids a rewrite.)
+- Thread-per-request vs. fixed thread pool — thread-per-request is simpler to reason about and is likely the right choice given "keep it simple" is a core constraint; pool can be a stretch goal.
