@@ -1,6 +1,6 @@
 # cpp-web-app
 
-A monolithic full-stack web application written entirely in **C++17** for educational purposes.
+A monolithic full-stack web application written entirely in **C++17** for educational purposes. https://cpp.subhr.in
 
 Every layer of the stack — HTTP server, router, business logic, file-backed database, and HTML rendering — is implemented with raw POSIX sockets and the standard library. No external web frameworks, no SQL engine, no JavaScript frontend.
 
