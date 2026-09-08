@@ -1,171 +1,213 @@
-# C++ Web App
+# CAPACITY CONNECT Backend
 
-> **A handcrafted C++17 web platform** that turns low-level systems engineering into a product-like full-stack experience.
+<p>
+  <strong>Enterprise-grade LMS backend for organizational capacity building.</strong><br>
+  Built for secure, role-driven learning, assessments, analytics, and communication.
+</p>
 
-[Live Demo](https://cpp.subhr.in)
-
-Built as a technical showcase, this project implements the complete web request lifecycle in modern C++: socket networking, HTTP parsing, routing, business logic, persistence, and HTML rendering — all without external web frameworks.
-
----
-
-## Why this stands out
-
-Most demos abstract away complexity. This one embraces it.
-
-- **Framework-free architecture** with full control over the request pipeline
-- **POSIX socket server** implemented from first principles
-- **Custom HTTP parser** for raw protocol-level understanding
-- **File-backed persistence layer** with deterministic behavior
-- **Server-side rendered HTML** with zero frontend dependencies
-- **Thread-per-connection model** for concurrency fundamentals
-
-This is ideal for technical leaders evaluating engineering depth, architecture thinking, and systems-level craftsmanship.
+<p>
+  <img src="https://img.shields.io/badge/Node.js-20%2B-339933?logo=node.js&amp;logoColor=white">
+  <img src="https://img.shields.io/badge/Express-4.x-000000?logo=express&amp;logoColor=white">
+  <img src="https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma&amp;logoColor=white">
+  <img src="https://img.shields.io/badge/PostgreSQL-Database-336791?logo=postgresql&amp;logoColor=white">
+  <img src="https://img.shields.io/badge/Status-Production%20Ready-success">
+</p>
 
 ---
 
-## Feature surface
+## Overview
 
-| Route | Method | Purpose |
-|------|--------|---------|
-| `/` | GET | Product-style landing page |
-| `/users` | GET | User listing and create form |
-| `/users` | POST | User creation (`name`, `age`) |
+CAPACITY CONNECT is a scalable backend platform that powers digital learning operations for institutions and enterprises.  
+It centralizes trainee and trainer workflows into one secure system:
 
-Core capabilities:
-
-- HTTP request parsing and response generation
-- Route dispatch with 404 fallback
-- Lightweight persistent storage in `data/database.db`
-- Utility layer for trim/split/decode/escape operations
-
----
-
-## Technology profile
-
-- **Language:** C++17
-- **Runtime model:** Native Linux process
-- **Networking:** Raw POSIX sockets
-- **Dependencies:** Standard library + pthread
-- **Build system:** Makefile
+- Role-based onboarding with approval lifecycle
+- Profile and competency management
+- Course publishing and enrollment
+- Learning resource delivery through Cloudflare R2
+- MCQ and document assessments with submission tracking
+- Feedback, notifications, announcements, and achievements
+- Dashboard APIs for role-specific analytics
+- Internal direct messaging for platform users
 
 ---
 
-## Quick start
+## Core Product Capabilities
 
-### Requirements
+### Identity &amp; Access
+- JWT-based authentication (`/register`, `/login`, `/me`)
+- Role-based access control for `TRAINEE`, `TRAINER`, and `ADMIN`
+- Approval workflow with user statuses (`PENDING`, `APPROVED`, etc.)
+- Rate limiting and secure middleware defaults via Helmet + CORS
 
-- Linux/macOS/WSL2
-- `g++` with C++17 support
-- `make`
+### Learning Lifecycle
+- Subject and competency catalog
+- Course creation, publishing, trainer collaboration, and invitations
+- Enrollment lifecycle management
+- Resource upload + secure access links from object storage
 
-### Build
+### Assessment &amp; Performance
+- MCQ and document assessment support
+- Attempt submission, auto/manual evaluation modes, and result controls
+- Trainer/trainee/admin performance views and dashboard endpoints
 
-```bash
-make
-# alternative:
-# g++ -std=c++17 -Wall -O2 -pthread src/*.cpp -o server
-```
-
-### Run
-
-```bash
-./server        # default :8080
-./server 9090   # custom port
-```
-
-### Try it
-
-```bash
-curl http://localhost:8080/
-curl http://localhost:8080/users
-curl -X POST -d "name=Alice&age=21" http://localhost:8080/users
-```
+### Engagement &amp; Communication
+- Course, trainer, resource, and assessment feedback APIs
+- Admin announcements and achievement publishing
+- Notification center with read/unread state
+- Direct messaging and conversation threading
 
 ---
 
-## Repository structure
+## Architecture
 
 ```text
-cpp-web-app/
-├── src/
-│   ├── main.cpp         # startup + route registration
-│   ├── server.cpp       # socket lifecycle + threading
-│   ├── parser.cpp       # raw HTTP parsing
-│   ├── router.cpp       # method/path dispatch
-│   ├── controller.cpp   # route business logic
-│   ├── database.cpp     # file-backed storage engine
-│   ├── renderer.cpp     # HTML response generation
-│   └── utils.cpp        # helper utilities
-├── data/
-│   └── database.db      # persistent data store
-├── Makefile
-└── README.md
+Client Applications (Web/Mobile)
+          │
+          ▼
+     Express API
+          │
+   ┌──────┴─────────┐
+   ▼                ▼
+PostgreSQL       Cloudflare R2
+(Prisma ORM)     (Learning assets)
 ```
 
----
-
-## Data model
-
-`data/database.db` uses a simple table-like text format:
+Codebase style follows a feature-first layout:
 
 ```text
-users:
-1,John,20
-2,Alice,21
-```
-
-Supported operations in the storage layer:
-
-- `createTable`
-- `insert` (auto-increment id)
-- `select`
-
----
-
-## Deployment example (Nginx reverse proxy)
-
-```nginx
-server {
-    listen 80;
-    server_name your.domain.or.ip;
-
-    location / {
-        proxy_pass         http://127.0.0.1:8080;
-        proxy_http_version 1.1;
-        proxy_set_header   Host $host;
-        proxy_set_header   X-Real-IP $remote_addr;
-        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-}
+src/
+├── features/        # Auth, users, courses, assessments, feedback, etc.
+├── middleware/      # Auth, RBAC, validation, error handling, rate limiting
+├── config/          # Environment and runtime configuration
+├── database/        # Prisma client wiring
+├── utils/           # Shared helpers
+├── app.js           # App composition and route mounting
+└── server.js        # Runtime entrypoint
 ```
 
 ---
 
-## Engineering intent
+## Tech Stack
 
-This repository is intentionally educational and architecture-driven.
-
-It is a strong technical experiment for:
-
-- systems programming interviews
-- backend architecture discussions
-- engineering leadership demos
-- teaching protocol-level web fundamentals
-
----
-
-## Scope boundaries
-
-Not intended as production infrastructure. Out of scope by design:
-
-- authentication/authorization
-- TLS termination in-process
-- SQL/indexing/query optimizer
-- advanced event loops (`epoll`, `io_uring`)
-- horizontal scaling controls
+- **Runtime:** Node.js 20+
+- **Framework:** Express
+- **Database:** PostgreSQL
+- **ORM:** Prisma
+- **Storage:** Cloudflare R2 (S3-compatible)
+- **Validation:** Zod
+- **Security:** Helmet, CORS, JWT, express-rate-limit
+- **Logging:** Pino
 
 ---
 
-## License
+## Quick Start
 
-Educational / public domain.
+### 1) Install dependencies
+```bash
+npm install
+```
+
+### 2) Configure environment
+Create a `.env` file in the repository root using the required keys:
+
+| Variable | Required | Description |
+|---|---|---|
+| `PORT` | Yes | API port (e.g. `4000`) |
+| `NODE_ENV` | Yes | Runtime environment (`development`, `production`) |
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `JWT_SECRET` | Yes | Secret for signing auth tokens |
+| `R2_ENDPOINT` | Yes | Cloudflare R2 endpoint |
+| `R2_ACCESS_KEY_ID` | Yes | R2 access key |
+| `R2_SECRET_ACCESS_KEY` | Yes | R2 secret key |
+| `R2_BUCKET` | Yes | R2 bucket name |
+| `R2_PUBLIC_BASE_URL` | Yes | Public base URL for served files |
+| `CORS_ORIGIN` | Yes | Allowed frontend origin |
+| `RATE_LIMIT_WINDOW_MS` | Yes | Rate limit window in ms |
+| `RATE_LIMIT_MAX` | Yes | Max requests per window |
+| `ADMIN_EMAIL` | Optional | Optional bootstrap/admin usage |
+| `ADMIN_PASSWORD` | Optional | Optional bootstrap/admin usage |
+| `OPENAI_API_KEY` | Optional | Enables AI-related endpoints/features |
+| `OPENAI_BASE_URL` | Optional | Custom OpenAI-compatible base URL |
+| `OPENAI_MODEL` | Optional | Model override (default: `gpt-4o-mini`) |
+
+### 3) Prepare database
+```bash
+npm run db:generate
+npm run db:migrate
+```
+
+### 4) Run in development
+```bash
+npm run dev
+```
+
+Health check:
+```bash
+GET /health
+```
+
+---
+
+## NPM Scripts
+
+| Script | Purpose |
+|---|---|
+| `npm run start` | Start production server |
+| `npm run dev` | Start development server with watch mode |
+| `npm run lint` | Run ESLint on `src/` |
+| `npm run db:migrate` | Run Prisma dev migrations |
+| `npm run db:deploy` | Apply migrations in deployment environments |
+| `npm run db:generate` | Generate Prisma client |
+| `npm run db:seed` | Seed database |
+| `npm run db:studio` | Open Prisma Studio |
+
+---
+
+## API Surface (Module-Level)
+
+Route modules currently include:
+
+- Authentication
+- Users
+- Profiles
+- Certifications
+- Subjects
+- Courses
+- Enrollments
+- Resources
+- Assessments
+- Dashboard
+- Notifications
+- Announcements
+- Achievements
+- Feedback
+- Competencies
+- Messages (`/messages`)
+
+---
+
+## Deployment Notes
+
+This repository includes production-oriented deployment assets:
+
+- `deploy.sh` for EC2 + PM2 rollout flow
+- `ecosystem.config.js` for PM2 process management
+- `nginx.conf.example` as reverse-proxy reference
+
+Typical deployment flow:
+1. Pull latest changes
+2. Install dependencies
+3. Apply Prisma migrations
+4. Generate Prisma client
+5. Restart PM2 process
+
+---
+
+## Contributing
+
+1. Create a feature branch
+2. Keep changes scoped and modular by feature
+3. Run lint and verify migrations before opening a PR
+4. Include API and schema updates in the same change when needed
+
+---
