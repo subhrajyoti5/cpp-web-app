@@ -1,213 +1,170 @@
-# CAPACITY CONNECT Backend
+# cpp-web-app
 
 <p>
-  <strong>Enterprise-grade LMS backend for organizational capacity building.</strong><br>
-  Built for secure, role-driven learning, assessments, analytics, and communication.
+  <strong>Educational single-binary web application built fully in C++.</strong><br>
+  Raw sockets, custom HTTP parsing, routing, controllers, rendering, and file-backed persistence.
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/Node.js-20%2B-339933?logo=node.js&amp;logoColor=white">
-  <img src="https://img.shields.io/badge/Express-4.x-000000?logo=express&amp;logoColor=white">
-  <img src="https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma&amp;logoColor=white">
-  <img src="https://img.shields.io/badge/PostgreSQL-Database-336791?logo=postgresql&amp;logoColor=white">
-  <img src="https://img.shields.io/badge/Status-Production%20Ready-success">
+  <img src="https://img.shields.io/badge/C%2B%2B-17%2B-00599C?logo=c%2B%2B&logoColor=white">
+  <img src="https://img.shields.io/badge/Build-Make-6D00CC?logo=gnu&logoColor=white">
+  <img src="https://img.shields.io/badge/Networking-POSIX%20Sockets-0A7EA4">
+  <img src="https://img.shields.io/badge/Storage-Flat%20File-4CAF50">
+  <img src="https://img.shields.io/badge/Status-Learning%20Project-blue">
 </p>
 
 ---
 
 ## Overview
 
-CAPACITY CONNECT is a scalable backend platform that powers digital learning operations for institutions and enterprises.  
-It centralizes trainee and trainer workflows into one secure system:
+`cpp-web-app` is a monolithic C++17 web app designed to demonstrate how web backends work without frameworks.
 
-- Role-based onboarding with approval lifecycle
-- Profile and competency management
-- Course publishing and enrollment
-- Learning resource delivery through Cloudflare R2
-- MCQ and document assessments with submission tracking
-- Feedback, notifications, announcements, and achievements
-- Dashboard APIs for role-specific analytics
-- Internal direct messaging for platform users
+It includes:
+
+- A blocking TCP server using POSIX sockets
+- A custom HTTP request parser
+- Method/path routing with controller handlers
+- Server-rendered HTML responses
+- A simple file-backed database (`data/database.db`)
+- Concurrent request handling with one detached thread per connection
 
 ---
 
-## Core Product Capabilities
+## Core Capabilities
 
-### Identity &amp; Access
-- JWT-based authentication (`/register`, `/login`, `/me`)
-- Role-based access control for `TRAINEE`, `TRAINER`, and `ADMIN`
-- Approval workflow with user statuses (`PENDING`, `APPROVED`, etc.)
-- Rate limiting and secure middleware defaults via Helmet + CORS
+### HTTP Server
+- Socket lifecycle with `socket`, `bind`, `listen`, `accept`, `recv`, `send`
+- Listens on configurable port (default `8080`)
+- Graceful shutdown support for `SIGINT` and `SIGTERM`
 
-### Learning Lifecycle
-- Subject and competency catalog
-- Course creation, publishing, trainer collaboration, and invitations
-- Enrollment lifecycle management
-- Resource upload + secure access links from object storage
+### Routing & Controllers
+- Route registration by method + path
+- Built-in routes:
+  - `GET /` → Home page
+  - `GET /users` → Users list page
+  - `POST /users` → Create user and redirect to `/users`
+- 404 response for unknown routes
 
-### Assessment &amp; Performance
-- MCQ and document assessment support
-- Attempt submission, auto/manual evaluation modes, and result controls
-- Trainer/trainee/admin performance views and dashboard endpoints
+### Parsing & Validation
+- Parses request line, headers, and body from raw HTTP bytes
+- Honors `Content-Length` for complete body reads
+- Form parsing for `application/x-www-form-urlencoded`
+- Basic input validation for required user fields and numeric age range
 
-### Engagement &amp; Communication
-- Course, trainer, resource, and assessment feedback APIs
-- Admin announcements and achievement publishing
-- Notification center with read/unread state
-- Direct messaging and conversation threading
+### Persistence
+- Custom in-memory table store with flat-file persistence
+- Auto-increment IDs for inserted records
+- Immediate persistence after writes
 
 ---
 
 ## Architecture
 
 ```text
-Client Applications (Web/Mobile)
-          │
-          ▼
-     Express API
-          │
-   ┌──────┴─────────┐
-   ▼                ▼
-PostgreSQL       Cloudflare R2
-(Prisma ORM)     (Learning assets)
+Browser / Client
+       │
+       ▼
+C++ Server (POSIX sockets)
+       │
+       ▼
+HTTP Parser
+       │
+       ▼
+Router
+   ┌───┴───────────┐
+   ▼               ▼
+Controllers     404 Handler
+   │
+   ▼
+Renderer + Database (data/database.db)
 ```
 
-Codebase style follows a feature-first layout:
+Project layout:
 
 ```text
 src/
-├── features/        # Auth, users, courses, assessments, feedback, etc.
-├── middleware/      # Auth, RBAC, validation, error handling, rate limiting
-├── config/          # Environment and runtime configuration
-├── database/        # Prisma client wiring
-├── utils/           # Shared helpers
-├── app.js           # App composition and route mounting
-└── server.js        # Runtime entrypoint
+├── main.cpp        # bootstrap: db init, route registration, server startup
+├── server.*        # TCP server and per-connection request handling
+├── parser.*        # HTTP request parsing
+├── router.*        # route table + request dispatch
+├── controller.*    # endpoint business logic + HTTP response helpers
+├── renderer.*      # HTML generation
+├── database.*      # flat-file table storage
+└── utils.*         # split/trim/form decoding/html escaping helpers
+
+Makefile            # build, run, clean
+server              # compiled binary output (after build)
+data/database.db    # persisted application data
 ```
 
 ---
 
 ## Tech Stack
 
-- **Runtime:** Node.js 20+
-- **Framework:** Express
-- **Database:** PostgreSQL
-- **ORM:** Prisma
-- **Storage:** Cloudflare R2 (S3-compatible)
-- **Validation:** Zod
-- **Security:** Helmet, CORS, JWT, express-rate-limit
-- **Logging:** Pino
+- **Language:** C++17
+- **Build Tool:** GNU Make + g++
+- **Networking:** POSIX sockets (Linux/macOS/WSL)
+- **Concurrency:** `std::thread` (thread-per-connection)
+- **Storage:** Custom flat-file DB (`data/database.db`)
+- **Rendering:** Server-side HTML string generation
 
 ---
 
 ## Quick Start
 
-### 1) Install dependencies
+### 1) Prerequisites
+- `g++` with C++17 support
+- `make`
+
+### 2) Build
 ```bash
-npm install
+make
 ```
 
-### 2) Configure environment
-Create a `.env` file in the repository root using the required keys:
-
-| Variable | Required | Description |
-|---|---|---|
-| `PORT` | Yes | API port (e.g. `4000`) |
-| `NODE_ENV` | Yes | Runtime environment (`development`, `production`) |
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `JWT_SECRET` | Yes | Secret for signing auth tokens |
-| `R2_ENDPOINT` | Yes | Cloudflare R2 endpoint |
-| `R2_ACCESS_KEY_ID` | Yes | R2 access key |
-| `R2_SECRET_ACCESS_KEY` | Yes | R2 secret key |
-| `R2_BUCKET` | Yes | R2 bucket name |
-| `R2_PUBLIC_BASE_URL` | Yes | Public base URL for served files |
-| `CORS_ORIGIN` | Yes | Allowed frontend origin |
-| `RATE_LIMIT_WINDOW_MS` | Yes | Rate limit window in ms |
-| `RATE_LIMIT_MAX` | Yes | Max requests per window |
-| `ADMIN_EMAIL` | Optional | Optional bootstrap/admin usage |
-| `ADMIN_PASSWORD` | Optional | Optional bootstrap/admin usage |
-| `OPENAI_API_KEY` | Optional | Enables AI-related endpoints/features |
-| `OPENAI_BASE_URL` | Optional | Custom OpenAI-compatible base URL |
-| `OPENAI_MODEL` | Optional | Model override (default: `gpt-4o-mini`) |
-
-### 3) Prepare database
+### 3) Run
 ```bash
-npm run db:generate
-npm run db:migrate
+./server
 ```
 
-### 4) Run in development
+Run on a custom port:
 ```bash
-npm run dev
+./server 9090
 ```
 
-Health check:
-```bash
-GET /health
-```
+Then open:
+- `http://localhost:8080/`
+- `http://localhost:8080/users`
 
 ---
 
-## NPM Scripts
+## Make Targets
 
-| Script | Purpose |
+| Target | Purpose |
 |---|---|
-| `npm run start` | Start production server |
-| `npm run dev` | Start development server with watch mode |
-| `npm run lint` | Run ESLint on `src/` |
-| `npm run db:migrate` | Run Prisma dev migrations |
-| `npm run db:deploy` | Apply migrations in deployment environments |
-| `npm run db:generate` | Generate Prisma client |
-| `npm run db:seed` | Seed database |
-| `npm run db:studio` | Open Prisma Studio |
+| `make` / `make all` | Build `server` from `src/*.cpp` |
+| `make run` | Build and run `./server` |
+| `make clean` | Remove object files and binary |
 
 ---
 
-## API Surface (Module-Level)
+## Example Requests
 
-Route modules currently include:
+Create a user:
+```bash
+curl -i -X POST http://localhost:8080/users \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  --data "name=Alice&age=21"
+```
 
-- Authentication
-- Users
-- Profiles
-- Certifications
-- Subjects
-- Courses
-- Enrollments
-- Resources
-- Assessments
-- Dashboard
-- Notifications
-- Announcements
-- Achievements
-- Feedback
-- Competencies
-- Messages (`/messages`)
+List users page:
+```bash
+curl -i http://localhost:8080/users
+```
 
 ---
 
-## Deployment Notes
+## Notes
 
-This repository includes production-oriented deployment assets:
-
-- `deploy.sh` for EC2 + PM2 rollout flow
-- `ecosystem.config.js` for PM2 process management
-- `nginx.conf.example` as reverse-proxy reference
-
-Typical deployment flow:
-1. Pull latest changes
-2. Install dependencies
-3. Apply Prisma migrations
-4. Generate Prisma client
-5. Restart PM2 process
-
----
-
-## Contributing
-
-1. Create a feature branch
-2. Keep changes scoped and modular by feature
-3. Run lint and verify migrations before opening a PR
-4. Include API and schema updates in the same change when needed
-
----
+- This project is intentionally educational and keeps logic simple.
+- Data is persisted to `data/database.db`; keep that file if you want records across restarts.
+- For reverse proxy deployment, place Nginx in front of this app and proxy to the server port.
