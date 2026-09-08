@@ -1,47 +1,79 @@
-# cpp-web-app
+# C++ Web App
 
-A monolithic full-stack web application written entirely in **C++17** for educational purposes. https://cpp.subhr.in
+> **A handcrafted C++17 web platform** that turns low-level systems engineering into a product-like full-stack experience.
 
-Every layer of the stack — HTTP server, router, business logic, file-backed database, and HTML rendering — is implemented with raw POSIX sockets and the standard library. No external web frameworks, no SQL engine, no JavaScript frontend.
+[Live Demo](https://cpp.subhr.in)
 
-## Features
+Built as a technical showcase, this project implements the complete web request lifecycle in modern C++: socket networking, HTTP parsing, routing, business logic, persistence, and HTML rendering — all without external web frameworks.
 
-| Route | Method | Description |
-|-------|--------|-------------|
-| `/` | GET | Landing page |
-| `/users` | GET | List all users + add form |
-| `/users` | POST | Create a user (`name`, `age` form fields) |
+---
 
-- Custom HTTP request parser
-- Route table with 404 fallback
-- Flat-file persistence (`data/database.db`)
-- Server-rendered raw HTML (no CSS / JS)
-- One thread per connection
+## Why this stands out
 
-## Requirements
+Most demos abstract away complexity. This one embraces it.
 
-- **OS:** Linux (Ubuntu VPS/EC2 recommended), macOS, or WSL2 on Windows
-- **Compiler:** `g++` with C++17 support
-- **Libraries:** POSIX sockets only (stock on Linux)
+- **Framework-free architecture** with full control over the request pipeline
+- **POSIX socket server** implemented from first principles
+- **Custom HTTP parser** for raw protocol-level understanding
+- **File-backed persistence layer** with deterministic behavior
+- **Server-side rendered HTML** with zero frontend dependencies
+- **Thread-per-connection model** for concurrency fundamentals
 
-## Build
+This is ideal for technical leaders evaluating engineering depth, architecture thinking, and systems-level craftsmanship.
+
+---
+
+## Feature surface
+
+| Route | Method | Purpose |
+|------|--------|---------|
+| `/` | GET | Product-style landing page |
+| `/users` | GET | User listing and create form |
+| `/users` | POST | User creation (`name`, `age`) |
+
+Core capabilities:
+
+- HTTP request parsing and response generation
+- Route dispatch with 404 fallback
+- Lightweight persistent storage in `data/database.db`
+- Utility layer for trim/split/decode/escape operations
+
+---
+
+## Technology profile
+
+- **Language:** C++17
+- **Runtime model:** Native Linux process
+- **Networking:** Raw POSIX sockets
+- **Dependencies:** Standard library + pthread
+- **Build system:** Makefile
+
+---
+
+## Quick start
+
+### Requirements
+
+- Linux/macOS/WSL2
+- `g++` with C++17 support
+- `make`
+
+### Build
 
 ```bash
 make
-# or:
+# alternative:
 # g++ -std=c++17 -Wall -O2 -pthread src/*.cpp -o server
 ```
 
-## Run
-
-From the **project root** (so `data/` and `public/` resolve correctly):
+### Run
 
 ```bash
-./server          # listens on :8080
-./server 9090     # custom port
+./server        # default :8080
+./server 9090   # custom port
 ```
 
-Then open `http://localhost:8080` in a browser, or:
+### Try it
 
 ```bash
 curl http://localhost:8080/
@@ -49,44 +81,48 @@ curl http://localhost:8080/users
 curl -X POST -d "name=Alice&age=21" http://localhost:8080/users
 ```
 
-## Project layout
+---
 
-```
+## Repository structure
+
+```text
 cpp-web-app/
 ├── src/
-│   ├── main.cpp         # entry point, route registration
-│   ├── server.cpp       # socket bind/listen/accept + thread-per-connection
-│   ├── parser.cpp       # raw HTTP → method/path/headers/body
-│   ├── router.cpp       # (method, path) → controller
-│   ├── controller.cpp   # business logic for each route
-│   ├── database.cpp     # file-backed table store
-│   ├── renderer.cpp     # HTML string generation
-│   └── utils.cpp        # split, trim, url-decode, html-escape
+│   ├── main.cpp         # startup + route registration
+│   ├── server.cpp       # socket lifecycle + threading
+│   ├── parser.cpp       # raw HTTP parsing
+│   ├── router.cpp       # method/path dispatch
+│   ├── controller.cpp   # route business logic
+│   ├── database.cpp     # file-backed storage engine
+│   ├── renderer.cpp     # HTML response generation
+│   └── utils.cpp        # helper utilities
 ├── data/
-│   └── database.db      # persistent flat-file storage
+│   └── database.db      # persistent data store
 ├── Makefile
 └── README.md
 ```
 
-## Database format
+---
 
-`data/database.db` is a simple multi-table text file:
+## Data model
 
-```
+`data/database.db` uses a simple table-like text format:
+
+```text
 users:
 1,John,20
 2,Alice,21
 ```
 
-Supported operations (in-process API, not a query language):
+Supported operations in the storage layer:
 
-- **createTable** — ensure a named table exists
-- **insert** — append a row (auto-increment id), then save to disk
-- **select** — return all rows for a table
+- `createTable`
+- `insert` (auto-increment id)
+- `select`
 
-## Nginx reverse proxy
+---
 
-On a VPS, put Nginx on port 80 and proxy to the C++ server on 8080:
+## Deployment example (Nginx reverse proxy)
 
 ```nginx
 server {
@@ -103,34 +139,33 @@ server {
 }
 ```
 
-Typical deploy steps on Ubuntu:
+---
 
-```bash
-sudo apt update && sudo apt install -y g++ make nginx
-# copy project, then:
-make
-./server &                          # or use systemd
-sudo cp nginx-snippet.conf ...      # or edit /etc/nginx/sites-available/default
-sudo systemctl reload nginx
-```
+## Engineering intent
 
-## Learning path
+This repository is intentionally educational and architecture-driven.
 
-This codebase follows the PRD build order:
+It is a strong technical experiment for:
 
-1. Socket server (bind / listen / accept / recv / send)
-2. HTTP parser
-3. Router + controllers
-4. File-backed database
-5. HTML renderer
-6. Thread-per-connection concurrency
+- systems programming interviews
+- backend architecture discussions
+- engineering leadership demos
+- teaching protocol-level web fundamentals
 
-Read the comments in `src/` — they explain *why* each networking and persistence step exists.
+---
 
-## Non-goals
+## Scope boundaries
 
-This is **not** production software. Intentionally omitted: auth, TLS in-process, SQL, indexing, epoll/io_uring, input hardening, horizontal scale.
+Not intended as production infrastructure. Out of scope by design:
+
+- authentication/authorization
+- TLS termination in-process
+- SQL/indexing/query optimizer
+- advanced event loops (`epoll`, `io_uring`)
+- horizontal scaling controls
+
+---
 
 ## License
 
-Educational / public domain — use freely for learning.
+Educational / public domain.
